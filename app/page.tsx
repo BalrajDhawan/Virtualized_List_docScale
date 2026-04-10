@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
+import React, { useState, useRef } from "react";
 
 export default function Home() {
   const [pageCount, setPageCount] = useState<number>(0);
   const [inputValue, setInputValue] = useState<string>("");
   const [startIndex, setStartIndex] = useState<number>(0);
+  const [virtualOffset, setVirtualOffset] = useState<number>(0);
+  const [debugActualScroll, setDebugActualScroll] = useState<number>(0);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const handleSetPages = () => {
     const num = parseInt(inputValue, 10);
@@ -20,28 +22,66 @@ export default function Home() {
   const decrementPages = () => setPageCount(prev => (prev > 0 ? prev - 1 : 0));
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = e.currentTarget.scrollTop;
+    const actualScrollTop = e.currentTarget.scrollTop;
+    setDebugActualScroll(actualScrollTop);
+
+    // Treadmill Teleportation Physics Constraints
+    const LIMIT_DOWN = 40000;
+    const LIMIT_UP = 5000;
+    const JUMP_DISTANCE = 30000;
+
+    let currentVirtualOffset = virtualOffset;
+    let newActualScrollTop = actualScrollTop;
+
+    const theoreticalTotalHeight = pageCount > 0 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
+
+    // Jump Logic!
+    if (actualScrollTop > LIMIT_DOWN && (theoreticalTotalHeight - currentVirtualOffset) > 50000) {
+      if (viewportRef.current) {
+        newActualScrollTop = actualScrollTop - JUMP_DISTANCE;
+        viewportRef.current.scrollTop = newActualScrollTop; // Forcing teleport physically
+        currentVirtualOffset += JUMP_DISTANCE;
+        setVirtualOffset(currentVirtualOffset);
+      }
+    } else if (actualScrollTop < LIMIT_UP && currentVirtualOffset > 0) {
+      if (viewportRef.current) {
+        newActualScrollTop = actualScrollTop + JUMP_DISTANCE;
+        viewportRef.current.scrollTop = newActualScrollTop; // Forcing teleport physically
+        currentVirtualOffset -= JUMP_DISTANCE;
+        setVirtualOffset(currentVirtualOffset);
+      }
+    }
+
+    const theoreticalScrollTop = newActualScrollTop + currentVirtualOffset;
     const itemHeight = 732; // 700px height + 32px gap
-    const newStartIndex = Math.floor(scrollTop / itemHeight);
+    const newStartIndex = Math.floor(theoreticalScrollTop / itemHeight);
     
-    // React inherently bails out of re-renders if the state value is unchanged.
-    // This acts as a perfect, free "throttle" without needing a setTimeout/debounce.
-    // We only re-render when the user physically crosses an exact page boundary!
+    // Automatic Throttle Bailout
     setStartIndex((prev) => {
       if (prev !== newStartIndex) {
-        console.log("Page boundary crossed. Rendering offset:", newStartIndex);
         return newStartIndex;
       }
       return prev;
     });
   };
 
-  const height = pageCount > 10 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
+  const theoreticalTotalHeight = pageCount > 0 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
+  // This physically crushes the massive container to legally be no larger than 50K max height
+  const physicalCanvasHeight = Math.max(0, Math.min(50000, theoreticalTotalHeight - virtualOffset));
 
   return (
     <div 
-      className="flex flex-col flex-1 items-center justify-start min-h-screen py-5 bg-zinc-100 font-sans dark:bg-zinc-900 dark:text-zinc-100"
+      className="flex flex-col flex-1 items-center justify-start min-h-screen py-5 bg-zinc-100 font-sans dark:bg-zinc-900 dark:text-zinc-100 relative"
       >
+      {/* Floating Diagnostics UI */}
+      <div className="fixed top-4 right-4 bg-black/90 text-green-400 p-5 rounded-lg border-2 border-green-500 font-mono text-sm shadow-[0_0_15px_rgba(34,197,94,0.3)] z-50 pointer-events-none min-w-[280px]">
+        <div className="font-bold text-base text-center border-b border-green-500/50 pb-2 mb-3 tracking-widest text-green-300">TREADMILL ACTIVE</div>
+        <div className="flex justify-between"><span>Native Scroll:</span> <span>{Math.round(debugActualScroll)}px</span></div>
+        <div className="flex justify-between"><span>Virtual Offset:</span> <span className="text-pink-400">{virtualOffset}px</span></div>
+        <div className="flex justify-between font-bold text-white border-t border-green-500/30 mt-2 pt-2"><span>Theoretical:</span> <span>{Math.round(debugActualScroll + virtualOffset)}px</span></div>
+        <div className="flex justify-between text-zinc-400 mt-2 text-xs"><span>Canvas Limit:</span> <span>{Math.round(physicalCanvasHeight)}px (Max 50K)</span></div>
+      </div>
+
       {/* Top Header Bar */}
       <div className="w-full max-w-[1000px] flex flex-col md:flex-row items-center justify-between gap-4 mb-6 bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 px-6">
         
@@ -97,13 +137,14 @@ export default function Home() {
 
       {/* Pages Render Viewport (The box that actually scrolls) */}
       <div 
+        ref={viewportRef}
         className="w-full max-w-[1000px] h-[80vh] overflow-y-auto bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"
         onScroll={handleScroll}
       >
         {/* Pages Canvas (The invisible tall box that forces the scrollbar) */}
         <div 
           className="w-full flex flex-col items-center gap-[32px] px-4 relative"
-          style={{ height: pageCount > 10 ? `${height}px` : 'auto' }}
+          style={{ height: `${physicalCanvasHeight}px` }}
         >
           {/* Pages */}
           {pageCount <= 10 ? Array.from({ length: pageCount }).map((_, index) => (
@@ -125,10 +166,11 @@ export default function Home() {
               style={{
                 position: 'absolute',
                 top: 0,
-                // This forcefully pushes the unmounted div DOWN the page exactly where it belongs
-                transform: `translateY(${actualPageIndex * 732}px)`,
+                // The physical placement of the div dynamically adjusts based on the current Virtual Offset
+                // so the user does NOT see the elements shift when the treadmill teleport jump occurs
+                transform: `translateY(${(actualPageIndex * 732) - virtualOffset}px)`,
               }}
-              className="bg-white border border-zinc-300 p-8 w-full m9ax-w-[800px] h-[700px] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 rounded transition-shadow text-black" 
+              className="bg-white border border-zinc-300 p-8 w-full max-w-[800px] h-[700px] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 rounded transition-shadow text-black" 
             ></div>
           ))}
           {/* No Pages found */}
