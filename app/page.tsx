@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 
 export default function Home() {
   const [pageCount, setPageCount] = useState<number>(0);
