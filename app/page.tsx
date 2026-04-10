@@ -1,55 +1,134 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 export default function Home() {
   const [pageCount, setPageCount] = useState<number>(0);
   const [inputValue, setInputValue] = useState<string>("");
   const [startIndex, setStartIndex] = useState<number>(0);
+  
+  // Custom Scroll State
+  const [virtualScrollTop, setVirtualScrollTop] = useState<number>(0);
+  const [viewportHeight, setViewportHeight] = useState<number>(800);
+  
+  // Scrollbar Dragging State
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // React refs for accessing DOM without re-renders during dragging
+  const dragStartY = useRef<number>(0);
+  const dragStartScrollTop = useRef<number>(0);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const handleSetPages = () => {
     const num = parseInt(inputValue, 10);
     if (!isNaN(num) && num >= 0) {
       setPageCount(num);
-      setInputValue(""); // Clear input after setting
+      setInputValue("");
     }
   };
 
   const incrementPages = () => setPageCount(prev => prev + 1);
   const decrementPages = () => setPageCount(prev => (prev > 0 ? prev - 1 : 0));
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = e.currentTarget.scrollTop;
-    const itemHeight = 732; // 700px height + 32px gap
-    const newStartIndex = Math.floor(scrollTop / itemHeight);
+  // Get dynamic viewport height on mount and resize
+  useEffect(() => {
+    if (viewportRef.current) {
+      setViewportHeight(viewportRef.current.clientHeight);
+    }
+  }, [pageCount]);
+
+  // Compute boundaries mathematically
+  const ITEM_HEIGHT = 732;
+  const theoreticalTotalHeight = pageCount > 0 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
+  const maxPossibleScroll = Math.max(0, theoreticalTotalHeight - viewportHeight);
+
+  // We are completely destroying native scrolling and replacing it with pure mathematical tracking
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (pageCount === 0) return;
+    if (theoreticalTotalHeight <= viewportHeight) return;
     
-    // React inherently bails out of re-renders if the state value is unchanged.
-    // This acts as a perfect, free "throttle" without needing a setTimeout/debounce.
-    // We only re-render when the user physically crosses an exact page boundary!
-    setStartIndex((prev) => {
-      if (prev !== newStartIndex) {
-        console.log("Page boundary crossed. Rendering offset:", newStartIndex);
-        return newStartIndex;
-      }
-      return prev;
+    // Normalize Wheel Speed (OS/Browser discrepancies)
+    let deltaY = e.deltaY;
+    if (e.deltaMode === 1) deltaY *= 33; // Line mode (Windows)
+    else if (e.deltaMode === 2) deltaY *= viewportHeight; // Page mode
+
+    setVirtualScrollTop((prev) => {
+      const newScroll = prev + deltaY;
+      const clampedScroll = Math.max(0, Math.min(newScroll, maxPossibleScroll));
+      
+      // Update startIndex mathematically based on our virtual scroll
+      const newStartIndex = Math.floor(clampedScroll / ITEM_HEIGHT);
+      setStartIndex((prevIndex) => prevIndex !== newStartIndex ? newStartIndex : prevIndex);
+      
+      return clampedScroll;
     });
   };
 
-  const height = pageCount > 10 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
+  // --- Custom Scrollbar Drag Physics ---
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(true);
+    dragStartY.current = e.clientY;
+    dragStartScrollTop.current = virtualScrollTop;
+    document.body.style.userSelect = "none"; // prevent text selection while dragging
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      // How far did the physical mouse move down the screen?
+      const physicalDeltaY = e.clientY - dragStartY.current;
+      
+      // Convert physical mouse movement into theoretical document scroll
+      const scrollbarTrackHeight = viewportHeight;
+      const thumbHeight = Math.max(40, (viewportHeight / theoreticalTotalHeight) * viewportHeight);
+      const scrollablePixels = theoreticalTotalHeight - viewportHeight;
+      const availableTrackSpace = scrollbarTrackHeight - thumbHeight;
+      
+      // Calculate multiplier: 1 pixel of mouse drag = X pixels of document scroll
+      const scrollRatio = availableTrackSpace > 0 ? scrollablePixels / availableTrackSpace : 0;
+      const theoreticalDelta = physicalDeltaY * scrollRatio;
+      
+      const newScroll = dragStartScrollTop.current + theoreticalDelta;
+      const clampedScroll = Math.max(0, Math.min(newScroll, maxPossibleScroll));
+      
+      setVirtualScrollTop(clampedScroll);
+      
+      const newStartIndex = Math.floor(clampedScroll / ITEM_HEIGHT);
+      setStartIndex((prevIndex) => prevIndex !== newStartIndex ? newStartIndex : prevIndex);
+    };
+
+    const handlePointerUp = () => {
+      setIsDragging(false);
+      document.body.style.userSelect = "";
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [isDragging, viewportHeight, theoreticalTotalHeight, maxPossibleScroll]);
+
+  // Thumb Positioning Math
+  const thumbHeight = theoreticalTotalHeight > 0 
+    ? Math.max(40, (viewportHeight / theoreticalTotalHeight) * viewportHeight)
+    : 0;
+  const thumbY = maxPossibleScroll > 0 
+    ? (virtualScrollTop / maxPossibleScroll) * (viewportHeight - thumbHeight)
+    : 0;
 
   return (
-    <div 
-      className="flex flex-col flex-1 items-center justify-start min-h-screen py-5 bg-zinc-100 font-sans dark:bg-zinc-900 dark:text-zinc-100"
-      >
+    <div className="flex flex-col flex-1 items-center justify-start min-h-screen py-5 bg-zinc-100 font-sans dark:bg-zinc-900 dark:text-zinc-100">
+      
       {/* Top Header Bar */}
       <div className="w-full max-w-[1000px] flex flex-col md:flex-row items-center justify-between gap-4 mb-6 bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 px-6">
-        
-        {/* Left: Title */}
         <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
           Virtualized List
         </h1>
 
-        {/* Center: Controls */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <input 
@@ -88,32 +167,36 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right: Total Pages */}
         <div className="text-lg font-medium whitespace-nowrap">
           Total: <span className="font-bold text-blue-600 dark:text-blue-400">{pageCount}</span>
         </div>
       </div>
 
-      {/* Pages Render Viewport (The box that actually scrolls) */}
+      {/* VIEWPORT: Native scrolling disabled (overflow-hidden) */}
       <div 
-        className="w-full max-w-[1000px] h-[80vh] overflow-y-auto bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"
-        onScroll={handleScroll}
+        ref={viewportRef}
+        className="w-full max-w-[1000px] h-[80vh] overflow-hidden bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 relative z-10"
+        onWheel={handleWheel}
       >
-        {/* Pages Canvas (The invisible tall box that forces the scrollbar) */}
-        <div 
-          className="w-full flex flex-col items-center gap-[32px] px-4 relative"
-          style={{ height: pageCount > 10 ? `${height}px` : 'auto' }}
-        >
-          {/* Pages */}
-          {pageCount <= 10 ? Array.from({ length: pageCount }).map((_, index) => (
+        {/* CUSTOM SCROLLBAR */}
+        {pageCount > 0 && theoreticalTotalHeight > viewportHeight && (
+          <div className="absolute top-0 right-0 w-3 h-full bg-zinc-100 dark:bg-zinc-800/80 border-l border-zinc-200 dark:border-zinc-700/50 z-50">
             <div 
-              key={index} 
-              contentEditable={true} 
-              dangerouslySetInnerHTML={{ __html: "Page: "+(index+1).toString() }} 
-              className="bg-white border border-zinc-300 p-8 w-full max-w-[800px] h-[700px] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 rounded transition-shadow text-black" 
-            >
-            </div>
-          )) : Array.from(
+              onPointerDown={handlePointerDown}
+              className={`absolute top-0 left-0 w-full rounded-full bg-zinc-400 hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-500 cursor-grab transform transition-colors ${isDragging ? '!bg-zinc-600 dark:!bg-zinc-400 cursor-grabbing' : ''}`}
+              style={{
+                height: `${thumbHeight}px`,
+                transform: `translateY(${thumbY}px)`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* PAGES CANVAS: No calculated height! */}
+        <div className="w-full flex flex-col items-center gap-[32px] px-4 relative h-full">
+          {pageCount === 0 ? (
+            <p className="text-zinc-500 italic mt-10">No pages yet. Create some above!</p>
+          ) : Array.from(
             { length: Math.min(10, pageCount - startIndex) }, 
             (_, index) => index + startIndex
           ).map((actualPageIndex, index) => (
@@ -124,16 +207,12 @@ export default function Home() {
               style={{
                 position: 'absolute',
                 top: 0,
-                // This forcefully pushes the unmounted div DOWN the page exactly where it belongs
-                transform: `translateY(${actualPageIndex * 732}px)`,
+                // Pages are physically positioned mathematically against the virtual scroll!
+                transform: `translateY(${(actualPageIndex * 732) - virtualScrollTop}px)`,
               }}
-              className="bg-white border border-zinc-300 p-8 w-full m9ax-w-[800px] h-[700px] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 rounded transition-shadow text-black" 
+              className="bg-white border border-zinc-300 p-8 w-full max-w-[800px] h-[700px] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 rounded transition-shadow text-black" 
             ></div>
           ))}
-          {/* No Pages found */}
-          {pageCount === 0 && (
-            <p className="text-zinc-500 italic mt-10">No pages yet. Create some above!</p>
-          )}
         </div>
       </div>
     </div>
