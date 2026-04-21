@@ -58,7 +58,8 @@ export function useAnnotation(pageIndex: number, addAnnotation: (pageIndex: numb
       y: physicalTop / rect.height,
       width: physicalWidth / rect.width,
       height: physicalHeight / rect.height,
-      color: 'rgba(255, 235, 59, 0.4)'
+      color: 'rgba(255, 235, 59, 0.4)',
+      status: 'syncing' // Initialize in syncing state
     };
 
     addAnnotation(pageIndex, newAnnotation);

@@ -6,4 +6,5 @@ export interface Annotation {
   height: number;  // Percentage of overall page height (0 to 1)
   color?: string;  // Optional hex color
   content?: string;// Text attached to the annotation (for later)
+  status: 'syncing' | 'saved'; // Lifecycle tracking
 }

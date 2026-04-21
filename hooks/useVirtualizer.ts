@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useDocumentStore } from '../state/documentStore';
 
 interface UseVirtualizerProps {
   pageCount: number;
@@ -27,6 +28,11 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
   const maxPossibleScroll = Math.max(0, theoreticalTotalHeight - viewportHeight);
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    // Drop popover selection immediately on scroll
+    if (useDocumentStore.getState().selectedAnnotationId) {
+      useDocumentStore.getState().setSelectedAnnotationId(null);
+    }
+
     if (pageCount === 0 || theoreticalTotalHeight <= viewportHeight) return;
     
     // Unify mouse wheel speeds across Chrome/Firefox/Windows/Mac
