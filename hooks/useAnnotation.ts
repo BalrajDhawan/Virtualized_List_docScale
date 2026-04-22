@@ -54,12 +54,13 @@ export function useAnnotation(pageIndex: number, addAnnotation: (pageIndex: numb
     // Convert Physical Pixels into scalable Percentages (0 to 1 ratios)
     const newAnnotation: Annotation = {
       id: crypto.randomUUID(),
+      type: 'highlight',
       x: physicalLeft / rect.width,
       y: physicalTop / rect.height,
       width: physicalWidth / rect.width,
       height: physicalHeight / rect.height,
       color: 'rgba(255, 235, 59, 0.4)',
-      status: 'syncing' // Initialize in syncing state
+      status: 'syncing'
     };
 
     addAnnotation(pageIndex, newAnnotation);
