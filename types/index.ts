@@ -8,3 +8,11 @@ export interface Annotation {
   content?: string;// Text attached to the annotation (for later)
   status: 'syncing' | 'saved'; // Lifecycle tracking
 }
+
+export interface GhostCursor {
+  id: string;      // Simulated connected user ID
+  name: string;    // Display Name
+  x: number;       // Percentage X
+  y: number;       // Percentage Y
+  color: string;   // Cursor Color
+}

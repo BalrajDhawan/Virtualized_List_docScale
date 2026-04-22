@@ -14,6 +14,7 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
   const deleteAnnotation = useDocumentStore(state => state.deleteAnnotation);
   const selectedAnnotationId = useDocumentStore(state => state.selectedAnnotationId);
   const setSelectedAnnotationId = useDocumentStore(state => state.setSelectedAnnotationId);
+  const ghostCursors = useDocumentStore(state => state.ghostCursors[index] || []);
 
   // Hook handles transient 60fps drawing state and percentage math calculations
   const { pageRef, handlePointerDown, handlePointerMove, handlePointerUp, transientBox } = useAnnotation(index, addAnnotation);
@@ -116,6 +117,31 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
           }}
         />
       )}
+
+      {/* RENDER GHOST CURSORS (WebSocket Simulation) */}
+      {ghostCursors.map((cursor) => (
+        <div 
+          key={cursor.id}
+          className="absolute pointer-events-none z-50 flex items-center justify-center transition-all duration-100 ease-linear"
+          style={{
+            left: `${cursor.x * 100}%`,
+            top: `${cursor.y * 100}%`
+          }}
+        >
+          {/* Mock Mouse Pointer SVG */}
+          <div style={{ color: cursor.color }} className="relative drop-shadow">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="white" strokeWidth="1" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5.5 3.21L15.36 21.05C15.54 21.36 15.93 21.46 16.24 21.28C16.38 21.19 16.48 21.07 16.53 20.91L18.72 13.79L23.75 11.75C24.08 11.62 24.23 11.25 24.1 10.92C24.03 10.76 23.91 10.63 23.75 10.55L6.03 2.11C5.7 1.95 5.3 2.08 5.14 2.4C5.07 2.54 5.04 2.7 5.05 2.85L5.5 3.21Z"/>
+            </svg>
+            <div 
+              className="absolute left-6 top-6 px-2 py-0.5 rounded text-xs text-white font-bold whitespace-nowrap shadow"
+              style={{ backgroundColor: cursor.color }}
+            >
+              {cursor.name}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 });
