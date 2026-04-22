@@ -17,6 +17,7 @@ export function VirtualizedList({ pageCount, renderItem }: VirtualizedListProps)
     thumbY,
     virtualScrollTop,
     startIndex,
+    visiblePageCount, // <--- Add this!
     theoreticalTotalHeight,
     viewportHeight
   } = useVirtualizer({ pageCount, itemHeight: ITEM_HEIGHT });
@@ -46,8 +47,8 @@ export function VirtualizedList({ pageCount, renderItem }: VirtualizedListProps)
         {pageCount === 0 ? (
           <p className="text-zinc-500 italic mt-10">No pages yet. Create some above!</p>
         ) : Array.from(
-          { length: Math.min(10, pageCount - startIndex) }, 
-          (_, index) => index + startIndex
+          { length: Math.min(visiblePageCount, pageCount - startIndex) }, 
+          (_, index) => index + Math.max(0, startIndex)
         ).map((actualPageIndex, domIndex) => {
           const translateY = (actualPageIndex * ITEM_HEIGHT) - virtualScrollTop;
           return renderItem(actualPageIndex, translateY, domIndex);

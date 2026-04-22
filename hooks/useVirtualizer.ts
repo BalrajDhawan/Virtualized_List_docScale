@@ -6,8 +6,10 @@ interface UseVirtualizerProps {
   itemHeight: number;
 }
 
+const OVERSCAN = 2; // Performance buffer: 2 pages above, 2 pages below
+
 export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
-  const [startIndex, setStartIndex] = useState<number>(0);
+  const [exactIndex, setExactIndex] = useState<number>(0);
   const [virtualScrollTop, setVirtualScrollTop] = useState<number>(0);
   const [viewportHeight, setViewportHeight] = useState<number>(800);
   const [isDragging, setIsDragging] = useState(false);
@@ -16,26 +18,22 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
   const dragStartScrollTop = useRef<number>(0);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  // Measure the viewport on mount or when pageCount changes (e.g. initial load)
   useEffect(() => {
     if (viewportRef.current) {
       setViewportHeight(viewportRef.current.clientHeight);
     }
   }, [pageCount]);
 
-  // Standard geometry math
   const theoreticalTotalHeight = pageCount > 0 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
   const maxPossibleScroll = Math.max(0, theoreticalTotalHeight - viewportHeight);
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    // Drop popover selection immediately on scroll
     if (useDocumentStore.getState().selectedAnnotationId) {
       useDocumentStore.getState().setSelectedAnnotationId(null);
     }
 
     if (pageCount === 0 || theoreticalTotalHeight <= viewportHeight) return;
     
-    // Unify mouse wheel speeds across Chrome/Firefox/Windows/Mac
     let deltaY = e.deltaY;
     if (e.deltaMode === 1) deltaY *= 33; 
     else if (e.deltaMode === 2) deltaY *= viewportHeight;
@@ -44,8 +42,8 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
       const newScroll = prev + deltaY;
       const clampedScroll = Math.max(0, Math.min(newScroll, maxPossibleScroll));
       
-      const newStartIndex = Math.floor(clampedScroll / itemHeight);
-      setStartIndex((prevIndex) => prevIndex !== newStartIndex ? newStartIndex : prevIndex);
+      const newExactIndex = Math.floor(clampedScroll / itemHeight);
+      setExactIndex(prevIndex => prevIndex !== newExactIndex ? newExactIndex : prevIndex);
       
       return clampedScroll;
     });
@@ -76,8 +74,8 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
       
       setVirtualScrollTop(clampedScroll);
       
-      const newStartIndex = Math.floor(clampedScroll / itemHeight);
-      setStartIndex((prevIndex) => prevIndex !== newStartIndex ? newStartIndex : prevIndex);
+      const newExactIndex = Math.floor(clampedScroll / itemHeight);
+      setExactIndex((prevIndex) => prevIndex !== newExactIndex ? newExactIndex : prevIndex);
     };
 
     const handlePointerUp = () => {
@@ -101,6 +99,16 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
     ? (virtualScrollTop / maxPossibleScroll) * (viewportHeight - thumbHeight)
     : 0;
 
+  // OVERSCAN MATH
+  // Shift the array start computationally backwards by the overscan amount.
+  const startIndex = Math.max(0, exactIndex - OVERSCAN);
+  
+  // Calculate how many items physically fit + the hidden mathematical buffers
+  const visibleItemCapacity = viewportHeight > 0 
+    ? Math.ceil(viewportHeight / itemHeight) 
+    : 10;
+  const visiblePageCount = visibleItemCapacity + (OVERSCAN * 2);
+
   return {
     viewportRef,
     handleWheel,
@@ -109,7 +117,8 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
     thumbHeight,
     thumbY,
     virtualScrollTop,
-    startIndex,
+    startIndex, // Math buffer start (e.g. 7 instead of 9)
+    visiblePageCount, // e.g. 14 items total
     theoreticalTotalHeight,
     viewportHeight
   };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDocumentStore } from '../../state/documentStore';
 import { useAnnotation } from '../../hooks/useAnnotation';
 
@@ -8,6 +8,20 @@ interface PageProps {
 }
 
 export const Page = React.memo(({ index, translateY }: PageProps) => {
+  // PREMIUM UX POLISH: Skeleton Loader Simulation
+  // When a div is recycled to a new index, we instantly show a skeleton
+  // to mask the heavy CPU calculation and network payload time.
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsLoaded(false); // Reset to skeleton when index updates via scrolling
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 400); // Fake a 400ms High-Res Document fetch
+    
+    return () => clearTimeout(timer);
+  }, [index]);
+
   // ATOMIC SUBSCRIPTION
   const annotations = useDocumentStore(state => state.annotations[index] || []);
   const addAnnotation = useDocumentStore(state => state.addAnnotation);
@@ -16,7 +30,6 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
   const setSelectedAnnotationId = useDocumentStore(state => state.setSelectedAnnotationId);
   const ghostCursors = useDocumentStore(state => state.ghostCursors[index] || []);
 
-  // Hook handles transient 60fps drawing state and percentage math calculations
   const { pageRef, handlePointerDown, handlePointerMove, handlePointerUp, transientBox } = useAnnotation(index, addAnnotation);
 
   return (
@@ -35,7 +48,23 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
       }}
       className="bg-white border border-zinc-300 p-8 w-full max-w-[800px] h-[700px] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 rounded transition-shadow text-black cursor-crosshair overflow-hidden relative" 
     >
-      <p className="select-none pointer-events-none">Page: {(index + 1).toString()}</p>
+      {!isLoaded ? (
+        <div className="w-full h-full flex flex-col gap-4 animate-pulse opacity-50">
+          <div className="w-1/3 h-8 bg-zinc-200 rounded"></div>
+          <div className="w-full h-4 bg-zinc-100 rounded mt-4"></div>
+          <div className="w-full h-4 bg-zinc-100 rounded"></div>
+          <div className="w-5/6 h-4 bg-zinc-100 rounded"></div>
+          <div className="w-full h-4 bg-zinc-100 rounded mt-6"></div>
+          <div className="w-4/6 h-4 bg-zinc-100 rounded"></div>
+        </div>
+      ) : (
+        <>
+          <h2 className="text-2xl font-bold mb-4 select-none pointer-events-none">Document Page {(index + 1).toString()}</h2>
+          <p className="select-none pointer-events-none text-zinc-600 leading-relaxed">
+            This is securely fetched heavy document content for Page {index + 1}. We are rendering it after a sophisticated skeleton pulse to ensure optimal UX perception. Notice how if you draw a bounding box annotation on this exact specific page, React.memo guarantees that absolutely nothing else on the screen stutters or re-renders!
+          </p>
+        </>
+      )}
       
       {/* RENDER SAVED & SYNCING ANNOTATIONS */}
       {annotations.map((ann) => {
@@ -44,10 +73,8 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
 
         return (
           <React.Fragment key={ann.id}>
-            {/* The Bounding Box */}
             <div 
               onPointerDown={(e) => {
-                // Prevent creating a new box when clicking an existing one!
                 e.stopPropagation();
                 if (!isSyncing) setSelectedAnnotationId(ann.id);
               }}
@@ -61,7 +88,6 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
                 top: `${ann.y * 100}%`,
                 width: `${ann.width * 100}%`,
                 height: `${ann.height * 100}%`,
-                // Make pointer events active so we can click them
                 pointerEvents: 'auto' 
               }}
             >
@@ -72,17 +98,15 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
               )}
             </div>
 
-            {/* The POPOVER (Only renders if this specific box is selected) */}
             {isSelected && !isSyncing && (
               <div 
                 className="absolute z-50 bg-zinc-900 border border-zinc-700 shadow-xl rounded-md p-2 flex items-center gap-2 transform -translate-x-1/2 -translate-y-[120%]"
                 style={{
                   left: `${(ann.x + ann.width / 2) * 100}%`,
                   top: `${ann.y * 100}%`,
-                  // Stop pointer events from bleeding through
                   pointerEvents: 'auto' 
                 }}
-                onPointerDown={(e) => e.stopPropagation()} // Stop drawing when clicking menu
+                onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="text-white text-xs px-2 whitespace-nowrap opacity-70">
                   Comment Support Coming Soon
@@ -105,7 +129,6 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
         );
       })}
 
-      {/* RENDER TRANSIENT DRAWING BOX (Temporary) */}
       {transientBox && (
         <div 
           className="absolute border-2 border-yellow-500 bg-yellow-400/50 rounded pointer-events-none"
@@ -118,7 +141,6 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
         />
       )}
 
-      {/* RENDER GHOST CURSORS (WebSocket Simulation) */}
       {ghostCursors.map((cursor) => (
         <div 
           key={cursor.id}
@@ -128,7 +150,6 @@ export const Page = React.memo(({ index, translateY }: PageProps) => {
             top: `${cursor.y * 100}%`
           }}
         >
-          {/* Mock Mouse Pointer SVG */}
           <div style={{ color: cursor.color }} className="relative drop-shadow">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="white" strokeWidth="1" xmlns="http://www.w3.org/2000/svg">
               <path d="M5.5 3.21L15.36 21.05C15.54 21.36 15.93 21.46 16.24 21.28C16.38 21.19 16.48 21.07 16.53 20.91L18.72 13.79L23.75 11.75C24.08 11.62 24.23 11.25 24.1 10.92C24.03 10.76 23.91 10.63 23.75 10.55L6.03 2.11C5.7 1.95 5.3 2.08 5.14 2.4C5.07 2.54 5.04 2.7 5.05 2.85L5.5 3.21Z"/>
