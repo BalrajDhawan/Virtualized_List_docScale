@@ -8,6 +8,7 @@ interface DocumentState {
   
   addAnnotation: (pageIndex: number, annotation: Annotation) => void;
   deleteAnnotation: (pageIndex: number, id: string) => void;
+  updateAnnotationContent: (pageIndex: number, id: string, content: string) => void;
   setSelectedAnnotationId: (id: string | null) => void;
   updateGhostCursor: (pageIndex: number, cursor: GhostCursor) => void;
 }
@@ -65,6 +66,18 @@ export const useDocumentStore = create<DocumentState>((set) => ({
       });
     }, 1500);
   },
+
+  updateAnnotationContent: (pageIndex, id, content) => set((state) => {
+    const existing = state.annotations[pageIndex] || [];
+    return {
+      annotations: {
+        ...state.annotations,
+        [pageIndex]: existing.map((ann) =>
+          ann.id === id ? { ...ann, content, type: 'comment' as const } : ann
+        )
+      }
+    };
+  }),
 
   deleteAnnotation: (pageIndex, id) => set((state) => {
     const existingAnnotations = state.annotations[pageIndex] || [];

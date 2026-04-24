@@ -34,6 +34,7 @@ export function useMultiplayerSimulation(isActive: boolean) {
     drawInterval = setInterval(() => {
       useDocumentStore.getState().addAnnotation(TARGET_PAGE, {
         id: `ghost-box-${Date.now()}`,
+        type: 'highlight',
         x: cursorX,
         y: cursorY,
         width: 0.2 + (Math.random() * 0.2), // Random width (20-40%)

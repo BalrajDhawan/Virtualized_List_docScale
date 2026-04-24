@@ -33,3 +33,19 @@ To guarantee annotations remain perfectly anchored across vastly divergent monit
 - **Render Count Integrity:** Validated 0% structural top-down state bleed. Drawing operations invoke 1 render strictly on the target element. 
 - **Concurrency Optimization:** 10+ frames/second CSS-interpolated Ghost Cursor tracking executing alongside heavy CPU payloads with zero Main Thread frame interruptions.
 - **Scale Capacity:** Structured to effortlessly project 100,000+ page canvas limits using purely mathematical heights decoupled from actual DOM height limitations.
+- **Performance Instrumentation:** Built-in `usePerformanceMonitor` and `useScrollFpsTracker` hooks provide live render counts and scroll FPS measurement for runtime validation.
+
+## Engineering Journey
+
+This project followed a deliberate 12-week systems-engineering curriculum, progressively layering complexity:
+
+| Phase | Weeks | Focus | Key Outcome |
+|-------|-------|-------|-------------|
+| **Foundation** | 1--2 | App shell, mock data, naive `.map()` rendering | Observed DOM overload firsthand at 1000+ pages |
+| **Virtualization** | 3--4 | Custom windowing engine, overscan buffers, scroll normalization | 10k+ pages at 60fps with ~14 DOM nodes |
+| **Annotations** | 5--6 | Pointer-based drawing, percentage coordinates, overlay alignment | Resolution-independent annotation system |
+| **State Architecture** | 7--8 | Zustand atomic subscriptions, React.memo firewalls, local vs global split | 0% top-down re-render bleed |
+| **Multiplayer** | 9--10 | Ghost cursor simulation, optimistic concurrency, defensive null-checks | Real-time collaboration without region locking |
+| **Performance & Polish** | 11--12 | Render profiling, FPS instrumentation, skeleton buffers, comment UI | Production-grade performance validation |
+
+The full weekly execution plan with detailed challenges, hints, and deliverables is documented in [`docScale.md`](../docScale.md).  
