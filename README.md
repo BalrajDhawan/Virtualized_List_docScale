@@ -48,4 +48,4 @@ This project followed a deliberate 12-week systems-engineering curriculum, progr
 | **Multiplayer** | 9--10 | Ghost cursor simulation, optimistic concurrency, defensive null-checks | Real-time collaboration without region locking |
 | **Performance & Polish** | 11--12 | Render profiling, FPS instrumentation, skeleton buffers, comment UI | Production-grade performance validation |
 
-The full weekly execution plan with detailed challenges, hints, and deliverables is documented in [`docScale.md`](../docScale.md).  
+The full weekly execution plan with detailed challenges, hints, and deliverables is documented in [`docScale.md`](../docScale.md).
