@@ -21,16 +21,24 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
   const [scrollVelocity, setScrollVelocity] = useState<number>(0);
 
   useEffect(() => {
-    if (viewportRef.current) {
-      setViewportHeight(viewportRef.current.clientHeight);
-    }
-  }, [pageCount]);
+    const el = viewportRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setViewportHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(el);
+    setViewportHeight(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
 
   const theoreticalTotalHeight = pageCount > 0 ? (pageCount * PAGE_HEIGHT) + ((pageCount - 1) * PAGE_GAP) : 0;
   const maxPossibleScroll = Math.max(0, theoreticalTotalHeight - viewportHeight);
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     if (pageCount === 0 || theoreticalTotalHeight <= viewportHeight) return;
+    e.preventDefault();
 
     let deltaY = e.deltaY;
     if (e.deltaMode === 1) deltaY *= 33;
@@ -106,6 +114,14 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
       window.removeEventListener("pointerup", handlePointerUp);
     };
   }, [isDragging, viewportHeight, theoreticalTotalHeight, maxPossibleScroll, itemHeight]);
+
+  // Attach wheel listener with passive: false so preventDefault works
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   const thumbHeight = theoreticalTotalHeight > 0 
     ? Math.max(40, (viewportHeight / theoreticalTotalHeight) * viewportHeight)

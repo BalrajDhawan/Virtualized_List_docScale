@@ -10,7 +10,6 @@ interface VirtualizedListProps {
 export function VirtualizedList({ pageCount, renderItem }: VirtualizedListProps) {
   const {
     viewportRef,
-    handleWheel,
     handlePointerDown,
     isDragging,
     thumbHeight,
@@ -27,7 +26,6 @@ export function VirtualizedList({ pageCount, renderItem }: VirtualizedListProps)
     <div
       ref={viewportRef}
       className="w-full max-w-[1000px] h-[80vh] overflow-hidden bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 relative z-10"
-      onWheel={handleWheel}
     >
       {/* CUSTOM SCROLLBAR */}
       {pageCount > 0 && theoreticalTotalHeight > viewportHeight && (
