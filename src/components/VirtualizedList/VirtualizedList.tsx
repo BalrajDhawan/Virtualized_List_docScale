@@ -16,6 +16,7 @@ export function VirtualizedList({ pageCount, renderItem }: VirtualizedListProps)
     thumbY,
     virtualScrollTop,
     scrollVelocity,
+    scrollPercent,
     startIndex,
     visiblePageCount,
     theoreticalTotalHeight,
@@ -25,12 +26,18 @@ export function VirtualizedList({ pageCount, renderItem }: VirtualizedListProps)
   return (
     <div
       ref={viewportRef}
-      className="w-full max-w-[1000px] h-[80vh] overflow-hidden bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 relative z-10"
+      tabIndex={0}
+      className="w-full max-w-[1000px] h-[80vh] overflow-hidden bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 relative z-10 outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >
       {/* CUSTOM SCROLLBAR */}
       {pageCount > 0 && theoreticalTotalHeight > viewportHeight && (
         <div className="absolute top-0 right-0 w-3 h-full bg-zinc-100 dark:bg-zinc-800/80 border-l border-zinc-200 dark:border-zinc-700/50 z-50">
           <div
+            role="scrollbar"
+            aria-orientation="vertical"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(scrollPercent * 100)}
             onPointerDown={handlePointerDown}
             className={`absolute top-0 left-0 w-full rounded-full bg-zinc-400 hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-500 cursor-grab transform transition-colors ${isDragging ? '!bg-zinc-600 dark:!bg-zinc-400 cursor-grabbing' : ''}`}
             style={{

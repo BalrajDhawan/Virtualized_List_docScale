@@ -115,13 +115,74 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
     };
   }, [isDragging, viewportHeight, theoreticalTotalHeight, maxPossibleScroll, itemHeight]);
 
-  // Attach wheel listener with passive: false so preventDefault works
+  // Shared scroll helper for keyboard/touch/wheel
+  const scrollBy = useCallback((delta: number) => {
+    setVirtualScrollTop((prev) => {
+      const clampedScroll = Math.max(0, Math.min(prev + delta, maxPossibleScroll));
+      if (Math.abs(clampedScroll - prev) > 2) {
+        if (useDocumentStore.getState().selectedAnnotationId) {
+          useDocumentStore.getState().setSelectedAnnotationId(null);
+        }
+      }
+      const newExactIndex = Math.floor(clampedScroll / itemHeight);
+      setExactIndex(prevIndex => prevIndex !== newExactIndex ? newExactIndex : prevIndex);
+      return clampedScroll;
+    });
+  }, [maxPossibleScroll, itemHeight]);
+
+  const scrollTo = useCallback((position: number) => {
+    const clamped = Math.max(0, Math.min(position, maxPossibleScroll));
+    setVirtualScrollTop(clamped);
+    const newExactIndex = Math.floor(clamped / itemHeight);
+    setExactIndex(newExactIndex);
+  }, [maxPossibleScroll, itemHeight]);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const LINE = 60;
+    switch (e.key) {
+      case 'ArrowDown': e.preventDefault(); scrollBy(LINE); break;
+      case 'ArrowUp':   e.preventDefault(); scrollBy(-LINE); break;
+      case 'PageDown':  e.preventDefault(); scrollBy(viewportHeight); break;
+      case 'PageUp':    e.preventDefault(); scrollBy(-viewportHeight); break;
+      case 'Home':      e.preventDefault(); scrollTo(0); break;
+      case 'End':       e.preventDefault(); scrollTo(maxPossibleScroll); break;
+    }
+  }, [scrollBy, scrollTo, viewportHeight, maxPossibleScroll]);
+
+  // Touch-drag scrolling on viewport
+  const touchStartY = useRef<number>(0);
+  const touchStartScroll = useRef<number>(0);
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchStartScroll.current = virtualScrollTop;
+  }, [virtualScrollTop]);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    e.preventDefault();
+    const deltaY = touchStartY.current - e.touches[0].clientY;
+    const newScroll = Math.max(0, Math.min(touchStartScroll.current + deltaY, maxPossibleScroll));
+    setVirtualScrollTop(newScroll);
+    const newExactIndex = Math.floor(newScroll / itemHeight);
+    setExactIndex(prevIndex => prevIndex !== newExactIndex ? newExactIndex : prevIndex);
+  }, [maxPossibleScroll, itemHeight]);
+
+  // Attach all non-passive listeners
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
     el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
-  }, [handleWheel]);
+    el.addEventListener('keydown', handleKeyDown);
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('keydown', handleKeyDown);
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [handleWheel, handleKeyDown, handleTouchStart, handleTouchMove]);
 
   const thumbHeight = theoreticalTotalHeight > 0 
     ? Math.max(40, (viewportHeight / theoreticalTotalHeight) * viewportHeight)
@@ -140,15 +201,17 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
     : 10;
   const visiblePageCount = visibleItemCapacity + (OVERSCAN * 2);
 
+  const scrollPercent = maxPossibleScroll > 0 ? virtualScrollTop / maxPossibleScroll : 0;
+
   return {
     viewportRef,
-    handleWheel,
     handlePointerDown,
     isDragging,
     thumbHeight,
     thumbY,
     virtualScrollTop,
     scrollVelocity,
+    scrollPercent,
     startIndex,
     visiblePageCount,
     theoreticalTotalHeight,
