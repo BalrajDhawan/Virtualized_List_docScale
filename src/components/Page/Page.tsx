@@ -29,9 +29,15 @@ export const Page = React.memo(({ index, translateY, scrollVelocity = 0 }: PageP
   // ATOMIC SUBSCRIPTION — stable empty fallbacks prevent spurious re-renders
   const annotations = useDocumentStore(state => state.annotations[index] ?? EMPTY_ANNOTATIONS);
   const addAnnotation = useDocumentStore(state => state.addAnnotation);
+  const setSelectedAnnotationId = useDocumentStore(state => state.setSelectedAnnotationId);
   const ghostCursors = useDocumentStore(state => state.ghostCursors[index] ?? EMPTY_CURSORS);
 
-  const { pageRef, handlePointerDown, handlePointerMove, handlePointerUp, transientBox } = useAnnotation(index, addAnnotation);
+  const { pageRef, handlePointerDown: startDraw, handlePointerMove, handlePointerUp, transientBox } = useAnnotation(index, addAnnotation);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setSelectedAnnotationId(null);
+    startDraw(e);
+  };
 
   return (
     <div
