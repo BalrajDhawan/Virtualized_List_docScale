@@ -73,7 +73,9 @@ export const useDocumentStore = create<DocumentState>((set) => ({
       annotations: {
         ...state.annotations,
         [pageIndex]: existing.map((ann) =>
-          ann.id === id ? { ...ann, content, type: 'comment' as const } : ann
+          ann.id === id
+            ? { ...ann, content, type: content ? 'comment' as const : 'highlight' as const }
+            : ann
         )
       }
     };

@@ -164,4 +164,31 @@ describe('documentStore', () => {
       expect(useDocumentStore.getState().selectedAnnotationId).toBeNull();
     });
   });
+
+  describe('updateAnnotationContent (type transitions)', () => {
+    it('transitions type from highlight to comment when content is set', () => {
+      useDocumentStore.getState().addAnnotation(0, {
+        id: 'ann-1', type: 'highlight',
+        x: 0.1, y: 0.1, width: 0.1, height: 0.1, status: 'syncing',
+      });
+
+      useDocumentStore.getState().updateAnnotationContent(0, 'ann-1', 'Hello');
+
+      const ann = useDocumentStore.getState().annotations[0]![0];
+      expect(ann.type).toBe('comment');
+      expect(ann.content).toBe('Hello');
+    });
+
+    it('transitions type back to highlight when content is cleared', () => {
+      useDocumentStore.getState().addAnnotation(0, {
+        id: 'ann-1', type: 'highlight',
+        x: 0.1, y: 0.1, width: 0.1, height: 0.1, status: 'syncing',
+      });
+      useDocumentStore.getState().updateAnnotationContent(0, 'ann-1', 'Note');
+      expect(useDocumentStore.getState().annotations[0]![0].type).toBe('comment');
+
+      useDocumentStore.getState().updateAnnotationContent(0, 'ann-1', '');
+      expect(useDocumentStore.getState().annotations[0]![0].type).toBe('highlight');
+    });
+  });
 });
