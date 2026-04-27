@@ -1,5 +1,6 @@
 import React from 'react';
 import { useVirtualizer } from '../../hooks/useVirtualizer';
+import { ITEM_HEIGHT } from '../../constants';
 
 interface VirtualizedListProps {
   pageCount: number;
@@ -7,7 +8,6 @@ interface VirtualizedListProps {
 }
 
 export function VirtualizedList({ pageCount, renderItem }: VirtualizedListProps) {
-  const ITEM_HEIGHT = 732;
   const {
     viewportRef,
     handleWheel,

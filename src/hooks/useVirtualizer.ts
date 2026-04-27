@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useDocumentStore } from '../state/documentStore';
+import { PAGE_HEIGHT, PAGE_GAP, OVERSCAN } from '../constants';
 
 interface UseVirtualizerProps {
   pageCount: number;
   itemHeight: number;
 }
-
-const OVERSCAN = 2; // Performance buffer: 2 pages above, 2 pages below
 
 export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
   const [exactIndex, setExactIndex] = useState<number>(0);
@@ -24,7 +23,7 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
     }
   }, [pageCount]);
 
-  const theoreticalTotalHeight = pageCount > 0 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
+  const theoreticalTotalHeight = pageCount > 0 ? (pageCount * PAGE_HEIGHT) + ((pageCount - 1) * PAGE_GAP) : 0;
   const maxPossibleScroll = Math.max(0, theoreticalTotalHeight - viewportHeight);
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {

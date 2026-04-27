@@ -1,10 +1,8 @@
 import { describe, it, expect } from 'vitest';
-
-// Pure math extracted from useVirtualizer for testability
-const OVERSCAN = 2;
+import { PAGE_HEIGHT, PAGE_GAP, ITEM_HEIGHT, OVERSCAN } from '../../constants';
 
 function computeTheoreticalTotalHeight(pageCount: number): number {
-  return pageCount > 0 ? (pageCount * 700) + ((pageCount - 1) * 32) : 0;
+  return pageCount > 0 ? (pageCount * PAGE_HEIGHT) + ((pageCount - 1) * PAGE_GAP) : 0;
 }
 
 function computeMaxPossibleScroll(totalHeight: number, viewportHeight: number): number {
@@ -49,7 +47,6 @@ function normalizeDeltaY(deltaY: number, deltaMode: number, viewportHeight: numb
 }
 
 describe('useVirtualizer math', () => {
-  const ITEM_HEIGHT = 732;
   const VIEWPORT_HEIGHT = 800;
 
   describe('computeTheoreticalTotalHeight', () => {
@@ -58,18 +55,17 @@ describe('useVirtualizer math', () => {
     });
 
     it('returns correct height for 1 page (no gap)', () => {
-      expect(computeTheoreticalTotalHeight(1)).toBe(700);
+      expect(computeTheoreticalTotalHeight(1)).toBe(PAGE_HEIGHT);
     });
 
     it('returns correct height for 500 pages', () => {
-      // 500 * 700 + 499 * 32 = 350000 + 15968 = 365968
-      expect(computeTheoreticalTotalHeight(500)).toBe(365968);
+      expect(computeTheoreticalTotalHeight(500)).toBe(500 * PAGE_HEIGHT + 499 * PAGE_GAP);
     });
 
     it('includes gaps between pages', () => {
       const twoPages = computeTheoreticalTotalHeight(2);
       const onePage = computeTheoreticalTotalHeight(1);
-      expect(twoPages - onePage).toBe(700 + 32); // one page + one gap
+      expect(twoPages - onePage).toBe(PAGE_HEIGHT + PAGE_GAP);
     });
   });
 
