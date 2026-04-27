@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useDocumentStore } from '../state/documentStore';
 
 const GHOST_ID = 'ghost-user-007';
-const GHOST_NAME = 'BalrajTheGhost';
+const GHOST_NAME = 'Demo User';
 const TARGET_PAGE = 0; // Simulate all ghost activity on Page 1 for visibility
 
 export function useMultiplayerSimulation(isActive: boolean) {
@@ -15,7 +15,7 @@ export function useMultiplayerSimulation(isActive: boolean) {
     let drawInterval: NodeJS.Timeout;
     let deleteInterval: NodeJS.Timeout;
 
-    // SIMULATED WEBSOCKET: 60FPS Cursor Movement
+    // 10Hz position writes with CSS transition interpolation for smooth rendering
     moveInterval = setInterval(() => {
       // Random walk algorithm
       cursorX = Math.max(0, Math.min(1, cursorX + (Math.random() - 0.5) * 0.05));
@@ -32,14 +32,19 @@ export function useMultiplayerSimulation(isActive: boolean) {
 
     // SIMULATED WEBSOCKET: Random Annotation Creation (Every 4 seconds)
     drawInterval = setInterval(() => {
+      const w = 0.2 + (Math.random() * 0.2);
+      const h = 0.1 + (Math.random() * 0.1);
+      const x = Math.min(cursorX, 1 - w); // Clamp so x + width <= 1
+      const y = Math.min(cursorY, 1 - h); // Clamp so y + height <= 1
+
       useDocumentStore.getState().addAnnotation(TARGET_PAGE, {
         id: `ghost-box-${Date.now()}`,
         type: 'highlight',
-        x: cursorX,
-        y: cursorY,
-        width: 0.2 + (Math.random() * 0.2), // Random width (20-40%)
-        height: 0.1 + (Math.random() * 0.1), // Random height (10-20%)
-        color: 'rgba(232, 62, 140, 0.4)', // Pink box
+        x,
+        y,
+        width: w,
+        height: h,
+        color: 'rgba(232, 62, 140, 0.4)',
         status: 'syncing'
       });
     }, 4000);
