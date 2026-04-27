@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { Annotation } from '../types';
+import { uuid } from '../utils/uuid';
 
 export function useAnnotation(pageIndex: number, addAnnotation: (pageIndex: number, annotation: Annotation) => void) {
   const [isDrawing, setIsDrawing] = useState(false);
@@ -9,14 +10,13 @@ export function useAnnotation(pageIndex: number, addAnnotation: (pageIndex: numb
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!pageRef.current) return;
-    
-    // Disable text selection and drag behaviors while drawing
+
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    
+
     const rect = pageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     setStartPoint({ x, y });
     setCurrentPoint({ x, y });
     setIsDrawing(true);
@@ -24,36 +24,34 @@ export function useAnnotation(pageIndex: number, addAnnotation: (pageIndex: numb
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDrawing || !pageRef.current) return;
-    
+
     const rect = pageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     setCurrentPoint({ x, y });
   }, [isDrawing]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDrawing || !pageRef.current) return;
-    
+
     setIsDrawing(false);
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    
+
     const rect = pageRef.current.getBoundingClientRect();
     const endX = e.clientX - rect.left;
     const endY = e.clientY - rect.top;
 
-    // Calculate Physical Dimensions
+    // Use endX/endY consistently for all four dimensions
     const physicalLeft = Math.min(startPoint.x, endX);
     const physicalTop = Math.min(startPoint.y, endY);
-    const physicalWidth = Math.abs(currentPoint.x - startPoint.x);
-    const physicalHeight = Math.abs(currentPoint.y - startPoint.y);
+    const physicalWidth = Math.abs(endX - startPoint.x);
+    const physicalHeight = Math.abs(endY - startPoint.y);
 
-    // Reject extremely tiny boxes (accidental clicks)
     if (physicalWidth < 5 || physicalHeight < 5) return;
 
-    // Convert Physical Pixels into scalable Percentages (0 to 1 ratios)
     const newAnnotation: Annotation = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       type: 'highlight',
       x: physicalLeft / rect.width,
       y: physicalTop / rect.height,
@@ -64,9 +62,8 @@ export function useAnnotation(pageIndex: number, addAnnotation: (pageIndex: numb
     };
 
     addAnnotation(pageIndex, newAnnotation);
-  }, [isDrawing, startPoint, currentPoint, addAnnotation, pageIndex]);
+  }, [isDrawing, startPoint, addAnnotation, pageIndex]);
 
-  // Expose mathematical values for rendering the transient temporary box
   const transientBox = isDrawing ? {
     left: Math.min(startPoint.x, currentPoint.x),
     top: Math.min(startPoint.y, currentPoint.y),
