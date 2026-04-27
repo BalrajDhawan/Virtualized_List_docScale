@@ -16,6 +16,9 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
   const dragStartY = useRef<number>(0);
   const dragStartScrollTop = useRef<number>(0);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const lastScrollTop = useRef<number>(0);
+  const lastScrollTime = useRef<number>(performance.now());
+  const [scrollVelocity, setScrollVelocity] = useState<number>(0);
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -27,23 +30,36 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
   const maxPossibleScroll = Math.max(0, theoreticalTotalHeight - viewportHeight);
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (useDocumentStore.getState().selectedAnnotationId) {
-      useDocumentStore.getState().setSelectedAnnotationId(null);
-    }
-
     if (pageCount === 0 || theoreticalTotalHeight <= viewportHeight) return;
-    
+
     let deltaY = e.deltaY;
-    if (e.deltaMode === 1) deltaY *= 33; 
+    if (e.deltaMode === 1) deltaY *= 33;
     else if (e.deltaMode === 2) deltaY *= viewportHeight;
 
     setVirtualScrollTop((prev) => {
       const newScroll = prev + deltaY;
       const clampedScroll = Math.max(0, Math.min(newScroll, maxPossibleScroll));
-      
+
+      // Only clear selection if scroll actually moved meaningfully
+      if (Math.abs(clampedScroll - prev) > 2) {
+        if (useDocumentStore.getState().selectedAnnotationId) {
+          useDocumentStore.getState().setSelectedAnnotationId(null);
+        }
+      }
+
+      // Track scroll velocity for skeleton triggering
+      const now = performance.now();
+      const dt = now - lastScrollTime.current;
+      if (dt > 0) {
+        const velocity = Math.abs(clampedScroll - lastScrollTop.current) / dt * 1000;
+        setScrollVelocity(velocity);
+      }
+      lastScrollTop.current = clampedScroll;
+      lastScrollTime.current = now;
+
       const newExactIndex = Math.floor(clampedScroll / itemHeight);
       setExactIndex(prevIndex => prevIndex !== newExactIndex ? newExactIndex : prevIndex);
-      
+
       return clampedScroll;
     });
   }, [pageCount, theoreticalTotalHeight, viewportHeight, maxPossibleScroll, itemHeight]);
@@ -116,8 +132,9 @@ export function useVirtualizer({ pageCount, itemHeight }: UseVirtualizerProps) {
     thumbHeight,
     thumbY,
     virtualScrollTop,
-    startIndex, // Math buffer start (e.g. 7 instead of 9)
-    visiblePageCount, // e.g. 14 items total
+    scrollVelocity,
+    startIndex,
+    visiblePageCount,
     theoreticalTotalHeight,
     viewportHeight
   };

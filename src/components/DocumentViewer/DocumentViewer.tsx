@@ -10,12 +10,12 @@ export function DocumentViewer({ pageCount }: DocumentViewerProps) {
   return (
     <VirtualizedList 
       pageCount={pageCount}
-      renderItem={(actualPageIndex, translateY, domIndex) => (
-        // We strictly use domIndex as the key to achieve DOM Recycling (Performance Optimization)
-        <Page 
-          key={domIndex} 
-          index={actualPageIndex} 
-          translateY={translateY} 
+      renderItem={(actualPageIndex, translateY, domIndex, scrollVelocity) => (
+        <Page
+          key={domIndex}
+          index={actualPageIndex}
+          translateY={translateY}
+          scrollVelocity={scrollVelocity}
         />
       )}
     />
