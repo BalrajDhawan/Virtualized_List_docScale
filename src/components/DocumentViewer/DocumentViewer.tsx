@@ -4,12 +4,14 @@ import { Page } from '../Page/Page';
 
 interface DocumentViewerProps {
   pageCount: number;
+  showDebug?: boolean;
 }
 
-export function DocumentViewer({ pageCount }: DocumentViewerProps) {
+export function DocumentViewer({ pageCount, showDebug }: DocumentViewerProps) {
   return (
-    <VirtualizedList 
+    <VirtualizedList
       pageCount={pageCount}
+      showDebug={showDebug}
       renderItem={(actualPageIndex, translateY, domIndex, scrollVelocity) => (
         <Page
           key={domIndex}

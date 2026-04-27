@@ -3,31 +3,28 @@ import { useRef, useEffect, useCallback } from 'react';
 interface PerformanceMetrics {
   renderCount: number;
   scrollFps: number;
-  lastFrameTime: number;
 }
 
 export function usePerformanceMonitor(label: string) {
   const metrics = useRef<PerformanceMetrics>({
     renderCount: 0,
     scrollFps: 0,
-    lastFrameTime: 0,
   });
 
   const frameTimestamps = useRef<number[]>([]);
 
-  // Increment render count every time this hook runs (i.e., component renders)
-  metrics.current.renderCount += 1;
+  // Increment in useEffect so StrictMode double-renders and discarded
+  // concurrent renders are not counted — only committed renders tally.
+  useEffect(() => {
+    metrics.current.renderCount += 1;
+  });
 
   const trackScrollFrame = useCallback(() => {
     const now = performance.now();
     frameTimestamps.current.push(now);
-
-    // Keep only frames from the last 1 second
     const cutoff = now - 1000;
     frameTimestamps.current = frameTimestamps.current.filter(t => t > cutoff);
-
     metrics.current.scrollFps = frameTimestamps.current.length;
-    metrics.current.lastFrameTime = now;
   }, []);
 
   const getMetrics = useCallback(() => ({
@@ -64,13 +61,11 @@ export function useScrollFpsTracker() {
           rafId.current = 0;
           return;
         }
-
         const now = performance.now();
         frameTimestamps.current.push(now);
         const cutoff = now - 1000;
         frameTimestamps.current = frameTimestamps.current.filter(t => t > cutoff);
         fpsRef.current = frameTimestamps.current.length;
-
         rafId.current = requestAnimationFrame(measure);
       };
       rafId.current = requestAnimationFrame(measure);
