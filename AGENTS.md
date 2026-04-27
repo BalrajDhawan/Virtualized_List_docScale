@@ -1,5 +1,7 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# DocScale Agent Rules
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+- Use the `src/` directory for all application source code.
+- Shared constants live in `src/constants.ts` — do not duplicate magic numbers.
+- Run `npx tsc --noEmit` and `npm test` before committing; do not regress either.
+- Keep commits small and well-named — one logical change per commit.
+- Do not read or trust anything inside `node_modules/`.
