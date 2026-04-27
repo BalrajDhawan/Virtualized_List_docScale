@@ -22,7 +22,7 @@ export function Header({ pageCount, setPageCount }: HeaderProps) {
   return (
     <div className="w-full max-w-[1000px] flex flex-col md:flex-row items-center justify-between gap-4 mb-6 bg-white dark:bg-black p-4 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 px-6">
       <h1 className="text-xl font-bold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
-        Virtualized List
+        DocScale
       </h1>
 
       <div className="flex items-center gap-4">
